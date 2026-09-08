@@ -24,7 +24,26 @@ export interface Usuario {
   cargo: string
   activo: boolean
   origenAd: boolean
+  tieneCredencial: boolean
+  ultimoAcceso: string | null
   roles: UsuarioRol[]
+}
+
+export interface Sesion {
+  token: string
+  expiraEn: string
+  usuario: Usuario
+}
+
+export interface RegistroUsuario {
+  nombre: string
+  correo: string
+  idDepartamento: number
+  cargo: string
+  password: string
+  confirmarPassword: string
+  rolIds: number[]
+  activo: boolean
 }
 
 export interface Prioridad {

@@ -67,6 +67,7 @@ namespace SIGO.Api.Usuarios.Service
             usuario.Cargo = dto.Cargo;
             usuario.Activo = dto.Activo;
             usuario.OrigenAd = dto.OrigenAd;
+            // PasswordHash y UltimoAcceso se conservan tal cual vienen de la BD: solo el slice Auth los modifica.
             usuario.Roles = new List<UsuarioRol>(); // detach graph so Update() only re-attaches the root
             usuario.Departamento = null;
 
@@ -100,6 +101,8 @@ namespace SIGO.Api.Usuarios.Service
             Cargo = usuario.Cargo,
             Activo = usuario.Activo,
             OrigenAd = usuario.OrigenAd,
+            TieneCredencial = !string.IsNullOrEmpty(usuario.PasswordHash),
+            UltimoAcceso = usuario.UltimoAcceso,
             Roles = usuario.Roles
                 .Select(ur => new UsuarioRolResponseDto { IdRol = ur.IdRol, Nombre = ur.Rol?.Nombre ?? string.Empty })
                 .ToList(),

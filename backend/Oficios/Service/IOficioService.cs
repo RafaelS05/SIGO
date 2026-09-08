@@ -24,17 +24,18 @@ namespace SIGO.Api.Oficios.Service
 
         Task<OficioResponseDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
-        Task<OficioResponseDto> CreateAsync(OficioCreateDto dto, CancellationToken cancellationToken = default);
+        // idUsuarioActual = quien ejecuta la acción (claim del JWT); queda como autor en bitácora.
+        Task<OficioResponseDto> CreateAsync(OficioCreateDto dto, int idUsuarioActual, CancellationToken cancellationToken = default);
 
         Task<OficioResponseDto?> UpdateAsync(int id, OficioUpdateDto dto, CancellationToken cancellationToken = default);
 
         Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 
-        Task<OficioResponseDto?> CambiarEstadoAsync(int id, OficioCambioEstadoDto dto, CancellationToken cancellationToken = default);
+        Task<OficioResponseDto?> CambiarEstadoAsync(int id, OficioCambioEstadoDto dto, int idUsuarioActual, CancellationToken cancellationToken = default);
 
-        Task<OficioResponseDto?> AsignarAsync(int id, OficioAsignacionDto dto, CancellationToken cancellationToken = default);
+        Task<OficioResponseDto?> AsignarAsync(int id, OficioAsignacionDto dto, int idUsuarioActual, CancellationToken cancellationToken = default);
 
-        Task<OficioResponseDto?> ComentarAsync(int id, OficioComentarioDto dto, CancellationToken cancellationToken = default);
+        Task<OficioResponseDto?> ComentarAsync(int id, OficioComentarioDto dto, int idUsuarioActual, CancellationToken cancellationToken = default);
 
         Task<OficioResponseDto?> AgregarAdjuntoAsync(int id, IFormFile archivo, int subidoPor, CancellationToken cancellationToken = default);
 

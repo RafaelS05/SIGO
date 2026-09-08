@@ -6,7 +6,7 @@ namespace SIGO.Api.Oficios.DTO
     /// <remarks>
     /// Every field MUST carry validation attributes — [ApiController] auto-returns 400 on invalid
     /// ModelState, but only validates what is decorated. An undecorated field is silently unvalidated.
-    /// Numero, Anio, Consecutivo, FechaVencimientoSla y estado inicial los calcula el servicio.
+    /// Numero, Anio, Consecutivo, FechaVencimientoSla, estado inicial y CreadoPor los calcula el servicio.
     /// </remarks>
     public class OficioCreateDto
     {
@@ -51,8 +51,6 @@ namespace SIGO.Api.Oficios.DTO
         [Required]
         public DateTime FechaIngreso { get; set; }
 
-        [Required]
-        [Range(1, int.MaxValue)]
-        public int CreadoPor { get; set; }
+        // CreadoPor no viaja en el cuerpo: lo aporta el usuario autenticado (token JWT).
     }
 }

@@ -1,70 +1,55 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { useUser } from './UserContext'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { PERMISOS } from './auth/permisos'
+import Layout from './components/Layout'
+import { RequierePermiso, RequiereSesion, SoloAnonimo } from './components/RutaProtegida'
+import AccesoDenegadoPage from './pages/AccesoDenegadoPage'
 import BandejaPage from './pages/BandejaPage'
-import OficioDetallePage from './pages/OficioDetallePage'
-import NuevoOficioPage from './pages/NuevoOficioPage'
 import CatalogosPage from './pages/CatalogosPage'
+import InicioPage from './pages/InicioPage'
+import LoginPage from './pages/LoginPage'
+import NuevoOficioPage from './pages/NuevoOficioPage'
+import OficioDetallePage from './pages/OficioDetallePage'
+import PerfilPage from './pages/PerfilPage'
+import RegistroUsuarioPage from './pages/RegistroUsuarioPage'
 import ReportesPage from './pages/ReportesPage'
 
+/**
+ * Enrutado RBAC:
+ *  - /login: público (redirige al inicio si ya hay sesión).
+ *  - Todo lo demás exige sesión; las secciones sensibles exigen además un permiso de la matriz.
+ *  - /admin/registro-usuario: URL de registro, solo Administrador.
+ */
 export default function App() {
-  const { usuarios, usuarioActual, setUsuarioActual } = useUser()
-  const esAdmin = usuarioActual?.roles.some((r) => r.nombre === 'Administrador') ?? false
-  const esAuditor = usuarioActual?.roles.some((r) => r.nombre === 'Auditor') ?? false
-
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-logo">S</span>
-          <div>
-            <strong>SIGO</strong>
-            <small>Gestión de Oficios</small>
-          </div>
-        </div>
-        <nav>
-          <span className="nav-section">Bandejas</span>
-          <NavLink to="/bandeja/mi">Mi bandeja</NavLink>
-          <NavLink to="/bandeja/departamento">Departamento</NavLink>
-          <NavLink to="/bandeja/atrasados">Atrasados</NavLink>
-          {(esAdmin || esAuditor) && <NavLink to="/bandeja/todos">Todos</NavLink>}
-          <span className="nav-section">Gestión</span>
-          <NavLink to="/nuevo">＋ Nuevo oficio</NavLink>
-          <NavLink to="/reportes">Reportes</NavLink>
-          {esAdmin && <NavLink to="/catalogos">Catálogos</NavLink>}
-        </nav>
-      </aside>
-      <div className="main">
-        <header className="topbar">
-          <span className="topbar-title">Sistema de Gestión de Oficios</span>
-          <div className="user-picker">
-            <label htmlFor="usuario">Usuario:</label>
-            <select
-              id="usuario"
-              value={usuarioActual?.id ?? ''}
-              onChange={(e) => {
-                const u = usuarios.find((x) => x.id === Number(e.target.value))
-                if (u) setUsuarioActual(u)
-              }}
-            >
-              {usuarios.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre} — {u.roles.map((r) => r.nombre).join(', ')}
-                </option>
-              ))}
-            </select>
-          </div>
-        </header>
-        <main className="content">
-          <Routes>
-            <Route path="/" element={<Navigate to="/bandeja/mi" replace />} />
-            <Route path="/bandeja/:tipo" element={<BandejaPage />} />
-            <Route path="/oficio/:id" element={<OficioDetallePage />} />
+    <Routes>
+      <Route element={<SoloAnonimo />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+
+      <Route element={<RequiereSesion />}>
+        <Route element={<Layout />}>
+          <Route index element={<InicioPage />} />
+          <Route path="/bandeja/:tipo" element={<BandejaPage />} />
+          <Route path="/oficio/:id" element={<OficioDetallePage />} />
+          <Route path="/perfil" element={<PerfilPage />} />
+          <Route path="/acceso-denegado" element={<AccesoDenegadoPage />} />
+
+          <Route element={<RequierePermiso permiso={PERMISOS.CrearOficios} />}>
             <Route path="/nuevo" element={<NuevoOficioPage />} />
+          </Route>
+          <Route element={<RequierePermiso permiso={PERMISOS.VerReportes} />}>
             <Route path="/reportes" element={<ReportesPage />} />
+          </Route>
+          <Route element={<RequierePermiso permiso={PERMISOS.AdministrarCatalogos} />}>
             <Route path="/catalogos" element={<CatalogosPage />} />
-          </Routes>
-        </main>
-      </div>
-    </div>
+          </Route>
+          <Route element={<RequierePermiso permiso={PERMISOS.AdministrarUsuarios} />}>
+            <Route path="/admin/registro-usuario" element={<RegistroUsuarioPage />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Route>
+    </Routes>
   )
 }

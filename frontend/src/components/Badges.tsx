@@ -8,6 +8,7 @@ const ESTADO_CLASE: Record<string, string> = {
   'Enviado a respuesta': 'badge badge-enviado',
   'Cerrado': 'badge badge-cerrado',
   'Rechazado/Devolución': 'badge badge-rechazado',
+  'Atrasado': 'badge badge-atrasado-suave',
 }
 
 export function EstadoBadge({ nombre }: { nombre: string }) {

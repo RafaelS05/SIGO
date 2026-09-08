@@ -68,7 +68,7 @@ namespace SIGO.Api.Oficios.Service
             return oficio is null ? null : ToResponse(oficio);
         }
 
-        public async Task<OficioResponseDto> CreateAsync(OficioCreateDto dto, CancellationToken cancellationToken = default)
+        public async Task<OficioResponseDto> CreateAsync(OficioCreateDto dto, int idUsuarioActual, CancellationToken cancellationToken = default)
         {
             var prioridad = await _prioridadRepository.GetByIdAsync(dto.IdPrioridad, cancellationToken)
                 ?? throw new InvalidOperationException($"Prioridad {dto.IdPrioridad} no existe.");
@@ -98,7 +98,7 @@ namespace SIGO.Api.Oficios.Service
                 IdCanal = dto.IdCanal,
                 FechaIngreso = dto.FechaIngreso,
                 FechaVencimientoSla = dto.FechaIngreso.AddHours(prioridad.SlaHoras),
-                CreadoPor = dto.CreadoPor,
+                CreadoPor = idUsuarioActual,
                 CreadoEn = DateTime.Now,
                 Bitacora =
                 {
@@ -106,7 +106,7 @@ namespace SIGO.Api.Oficios.Service
                     {
                         IdEstadoDestino = estadoInicial.Id,
                         Comentario = "Oficio registrado.",
-                        IdUsuario = dto.CreadoPor,
+                        IdUsuario = idUsuarioActual,
                         FechaEvento = DateTime.Now,
                     },
                 },
@@ -156,7 +156,7 @@ namespace SIGO.Api.Oficios.Service
             return true;
         }
 
-        public async Task<OficioResponseDto?> CambiarEstadoAsync(int id, OficioCambioEstadoDto dto, CancellationToken cancellationToken = default)
+        public async Task<OficioResponseDto?> CambiarEstadoAsync(int id, OficioCambioEstadoDto dto, int idUsuarioActual, CancellationToken cancellationToken = default)
         {
             var oficio = await _repository.GetByIdAsync(id, cancellationToken);
             if (oficio is null)
@@ -175,7 +175,7 @@ namespace SIGO.Api.Oficios.Service
                 IdEstadoOrigen = estadoOrigen,
                 IdEstadoDestino = estadoDestino.Id,
                 Comentario = dto.Comentario,
-                IdUsuario = dto.IdUsuario,
+                IdUsuario = idUsuarioActual,
                 FechaEvento = DateTime.Now,
             }, cancellationToken);
 
@@ -187,7 +187,7 @@ namespace SIGO.Api.Oficios.Service
             return ToResponse(updated!);
         }
 
-        public async Task<OficioResponseDto?> AsignarAsync(int id, OficioAsignacionDto dto, CancellationToken cancellationToken = default)
+        public async Task<OficioResponseDto?> AsignarAsync(int id, OficioAsignacionDto dto, int idUsuarioActual, CancellationToken cancellationToken = default)
         {
             var oficio = await _repository.GetByIdAsync(id, cancellationToken);
             if (oficio is null)
@@ -211,7 +211,7 @@ namespace SIGO.Api.Oficios.Service
                 IdUsuario = dto.IdUsuario,
                 Activo = true,
                 AsignadoEn = DateTime.Now,
-                AsignadoPor = dto.AsignadoPor,
+                AsignadoPor = idUsuarioActual,
             }, cancellationToken);
 
             // Al asignar, un oficio "Recibido" pasa a "Asignado".
@@ -232,7 +232,7 @@ namespace SIGO.Api.Oficios.Service
                 Comentario = string.IsNullOrWhiteSpace(dto.Comentario)
                     ? $"Asignado a {usuario.Nombre}."
                     : $"Asignado a {usuario.Nombre}. {dto.Comentario}",
-                IdUsuario = dto.AsignadoPor,
+                IdUsuario = idUsuarioActual,
                 FechaEvento = DateTime.Now,
             }, cancellationToken);
 
@@ -244,7 +244,7 @@ namespace SIGO.Api.Oficios.Service
             return ToResponse(updated!);
         }
 
-        public async Task<OficioResponseDto?> ComentarAsync(int id, OficioComentarioDto dto, CancellationToken cancellationToken = default)
+        public async Task<OficioResponseDto?> ComentarAsync(int id, OficioComentarioDto dto, int idUsuarioActual, CancellationToken cancellationToken = default)
         {
             var oficio = await _repository.GetByIdAsync(id, cancellationToken);
             if (oficio is null)
@@ -254,7 +254,7 @@ namespace SIGO.Api.Oficios.Service
             {
                 IdOficio = id,
                 Comentario = dto.Comentario,
-                IdUsuario = dto.IdUsuario,
+                IdUsuario = idUsuarioActual,
                 FechaEvento = DateTime.Now,
             }, cancellationToken);
 

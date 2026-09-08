@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { useUser } from '../UserContext'
+import { useAuth } from '../auth/AuthContext'
+import { ROL_ETIQUETA } from '../auth/permisos'
+import { fmtFecha } from '../components/Badges'
+import { IconoUsuarioMas } from '../components/Icons'
 import type { Departamento, Rol, Usuario } from '../types'
 
 type Campo = {
@@ -182,7 +186,7 @@ function CatalogoCrud({ def }: { def: CatalogoDef }) {
 }
 
 function UsuariosCrud() {
-  const { recargarUsuarios } = useUser()
+  const { usuario: sesionUsuario, refrescar } = useAuth()
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
@@ -190,7 +194,35 @@ function UsuariosCrud() {
     id?: number; nombre: string; correo: string; idDepartamento: number | ''; cargo: string;
     activo: boolean; origenAd: boolean; rolIds: number[]
   } | null>(null)
+  const [restableciendo, setRestableciendo] = useState<Usuario | null>(null)
+  const [passwordNueva, setPasswordNueva] = useState('')
   const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
+
+  const restablecer = async () => {
+    if (!restableciendo) return
+    setError('')
+    if (passwordNueva.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.')
+    try {
+      await api.auth.restablecerPassword(restableciendo.id, passwordNueva)
+      setAviso(`Contraseña restablecida para ${restableciendo.nombre}.`)
+      setRestableciendo(null)
+      setPasswordNueva('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const eliminarUsuario = async (u: Usuario) => {
+    if (!confirm(`¿Eliminar la cuenta de ${u.nombre}? Solo es posible si no tiene oficios asociados.`)) return
+    setError('')
+    try {
+      await api.usuarios.remove(u.id)
+      cargar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const cargar = useCallback(() => {
     api.usuarios.list().then(setUsuarios)
@@ -211,7 +243,7 @@ function UsuariosCrud() {
       else await api.usuarios.create(datos)
       setEditando(null)
       cargar()
-      recargarUsuarios()
+      if (id === sesionUsuario?.id) refrescar() // si el admin se editó a sí mismo, refresca la sesión
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
@@ -220,28 +252,27 @@ function UsuariosCrud() {
   return (
     <div>
       {error && <div className="alert">{error}</div>}
+      {aviso && <div className="aviso-exito">{aviso}</div>}
       <div className="cat-toolbar">
-        <button
-          className="btn btn-primary"
-          onClick={() => setEditando({ nombre: '', correo: '', idDepartamento: '', cargo: '', activo: true, origenAd: false, rolIds: [] })}
-        >
-          ＋ Agregar
-        </button>
+        <Link className="btn btn-primary" to="/admin/registro-usuario"><IconoUsuarioMas size={16} /> Registrar usuario</Link>
+        <span className="hint" style={{ margin: 0 }}>El alta con contraseña se hace en la página de registro; aquí se editan datos y roles.</span>
       </div>
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Nombre</th><th>Correo</th><th>Departamento</th><th>Cargo</th><th>Roles</th><th>Activo</th><th /></tr>
+            <tr><th>Nombre</th><th>Correo</th><th>Departamento</th><th>Cargo</th><th>Roles</th><th>Activo</th><th>Credencial</th><th>Último acceso</th><th /></tr>
           </thead>
           <tbody>
             {usuarios.map((u) => (
               <tr key={u.id}>
-                <td>{u.nombre}</td>
+                <td>{u.nombre}{u.id === sesionUsuario?.id && <span className="muted"> (usted)</span>}</td>
                 <td>{u.correo}</td>
                 <td>{u.departamentoNombre}</td>
                 <td>{u.cargo}</td>
-                <td>{u.roles.map((r) => r.nombre).join(', ')}</td>
+                <td>{u.roles.map((r) => ROL_ETIQUETA[r.nombre] ?? r.nombre).join(', ')}</td>
                 <td>{u.activo ? 'Sí' : 'No'}</td>
+                <td>{u.tieneCredencial ? <span className="badge badge-entiempo">Sí</span> : <span className="badge">No</span>}</td>
+                <td>{fmtFecha(u.ultimoAcceso)}</td>
                 <td className="td-actions">
                   <button
                     className="btn btn-sm"
@@ -252,12 +283,30 @@ function UsuariosCrud() {
                   >
                     Editar
                   </button>
+                  <button className="btn btn-sm" onClick={() => { setRestableciendo(u); setPasswordNueva(''); setAviso('') }}>Contraseña</button>
+                  {u.id !== sesionUsuario?.id && (
+                    <button className="btn btn-sm btn-danger" onClick={() => eliminarUsuario(u)}>Eliminar</button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {restableciendo && (
+        <div className="modal-backdrop" onClick={() => setRestableciendo(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Restablecer contraseña</h3>
+            <p className="muted">{restableciendo.nombre} · {restableciendo.correo}</p>
+            <label>Nueva contraseña<input type="password" autoComplete="new-password" value={passwordNueva} onChange={(e) => setPasswordNueva(e.target.value)} minLength={8} /></label>
+            <div className="form-actions">
+              <button className="btn" onClick={() => setRestableciendo(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={restablecer} disabled={passwordNueva.length < 8}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editando && (
         <div className="modal-backdrop" onClick={() => setEditando(null)}>
@@ -291,7 +340,7 @@ function UsuariosCrud() {
                           : editando.rolIds.filter((x) => x !== r.id),
                       })}
                   />
-                  {r.nombre}
+                  {ROL_ETIQUETA[r.nombre] ?? r.nombre}
                 </label>
               ))}
             </fieldset>
@@ -311,13 +360,16 @@ function UsuariosCrud() {
 }
 
 export default function CatalogosPage() {
-  const [tab, setTab] = useState('departamentos')
+  const [params, setParams] = useSearchParams()
   const tabs = [...Object.entries(CATALOGOS).map(([k, v]) => [k, v.titulo] as const), ['usuarios', 'Usuarios'] as const]
+  const tabParam = params.get('tab') ?? ''
+  const tab = tabs.some(([k]) => k === tabParam) ? tabParam : 'departamentos'
+  const setTab = (k: string) => setParams({ tab: k })
 
   return (
     <div>
-      <h1>Catálogos y configuración</h1>
-      <p className="subtitle">Departamentos, tipos de oficio, prioridades/SLA, estados, canales y usuarios.</p>
+      <h1>Configuración</h1>
+      <p className="subtitle">Departamentos, tipos de oficio, prioridades/SLA, estados, canales y usuarios. Solo Administrador.</p>
       <div className="tabs">
         {tabs.map(([k, titulo]) => (
           <button key={k} className={tab === k ? 'tab tab-active' : 'tab'} onClick={() => setTab(k)}>{titulo}</button>

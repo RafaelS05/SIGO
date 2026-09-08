@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
-import { useUser } from '../UserContext'
+import { useAuth } from '../auth/AuthContext'
+import { PERMISOS } from '../auth/permisos'
 import { EstadoBadge, PrioridadBadge, SlaBadge, fmtFecha } from '../components/Badges'
 import type { Estado, Oficio, Usuario } from '../types'
 
@@ -9,7 +10,7 @@ type Tab = 'bitacora' | 'adjuntos' | 'asignaciones'
 
 export default function OficioDetallePage() {
   const { id } = useParams()
-  const { usuarioActual } = useUser()
+  const { puede } = useAuth()
   const [oficio, setOficio] = useState<Oficio | null>(null)
   const [estados, setEstados] = useState<Estado[]>([])
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
@@ -22,6 +23,10 @@ export default function OficioDetallePage() {
   const [comentario, setComentario] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Acciones visibles según la matriz RBAC (el backend vuelve a validar cada una).
+  const puedeTramitar = puede(PERMISOS.TramitarOficios)
+  const puedeAsignar = puede(PERMISOS.AsignarOficios)
+
   const cargar = useCallback(() => {
     api.oficios.get(Number(id)).then(setOficio).catch((e) => setError(e.message))
   }, [id])
@@ -29,8 +34,8 @@ export default function OficioDetallePage() {
   useEffect(() => {
     cargar()
     api.estados.list().then(setEstados)
-    api.usuarios.list().then(setUsuarios)
-  }, [cargar])
+    if (puedeAsignar) api.usuarios.list().then(setUsuarios).catch(() => setUsuarios([]))
+  }, [cargar, puedeAsignar])
 
   const ejecutar = async (fn: () => Promise<Oficio>) => {
     setError('')
@@ -42,13 +47,12 @@ export default function OficioDetallePage() {
   }
 
   if (!oficio) return <p className="muted">{error || 'Cargando…'}</p>
-  const uid = usuarioActual?.id ?? 0
 
   return (
     <div>
       <div className="page-head">
         <div>
-          <p className="breadcrumb"><Link to="/bandeja/mi">Bandejas</Link> / {oficio.numero}</p>
+          <p className="breadcrumb"><Link to="/">Inicio</Link> / <Link to="/bandeja/mi">Bandejas</Link> / {oficio.numero}</p>
           <h1>{oficio.asunto}</h1>
           <div className="badge-row">
             <span className="badge badge-dir">{oficio.direccion}</span>
@@ -84,69 +88,81 @@ export default function OficioDetallePage() {
         <section className="card">
           <h2>Acciones rápidas</h2>
 
-          <div className="action">
-            <h3>Cambiar estado</h3>
-            <select value={nuevoEstado} onChange={(e) => setNuevoEstado(e.target.value)}>
-              <option value="">Seleccione estado…</option>
-              {estados.filter((s) => s.id !== oficio.idEstadoActual).map((s) => (
-                <option key={s.id} value={s.id}>{s.nombre}</option>
-              ))}
-            </select>
-            <input placeholder="Motivo (queda en bitácora)" value={motivoEstado} onChange={(e) => setMotivoEstado(e.target.value)} />
-            <button
-              className="btn btn-primary"
-              disabled={!nuevoEstado}
-              onClick={() => ejecutar(() => api.oficios.cambiarEstado(oficio.id, Number(nuevoEstado), motivoEstado, uid)).then(() => { setNuevoEstado(''); setMotivoEstado('') })}
-            >
-              Aplicar
-            </button>
-          </div>
+          {!puedeTramitar && !puedeAsignar && (
+            <p className="muted">Su rol es de solo lectura sobre este oficio.</p>
+          )}
 
-          <div className="action">
-            <h3>Reasignar responsable</h3>
-            <select value={nuevoResponsable} onChange={(e) => setNuevoResponsable(e.target.value)}>
-              <option value="">Seleccione usuario…</option>
-              {usuarios.filter((u) => u.activo).map((u) => (
-                <option key={u.id} value={u.id}>{u.nombre} ({u.departamentoNombre})</option>
-              ))}
-            </select>
-            <button
-              className="btn btn-primary"
-              disabled={!nuevoResponsable}
-              onClick={() => ejecutar(() => api.oficios.asignar(oficio.id, Number(nuevoResponsable), uid, '')).then(() => setNuevoResponsable(''))}
-            >
-              Asignar
-            </button>
-          </div>
+          {puedeTramitar && (
+            <div className="action">
+              <h3>Cambiar estado</h3>
+              <select value={nuevoEstado} onChange={(e) => setNuevoEstado(e.target.value)}>
+                <option value="">Seleccione estado…</option>
+                {estados.filter((s) => s.id !== oficio.idEstadoActual).map((s) => (
+                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                ))}
+              </select>
+              <input placeholder="Motivo (queda en bitácora)" value={motivoEstado} onChange={(e) => setMotivoEstado(e.target.value)} />
+              <button
+                className="btn btn-primary"
+                disabled={!nuevoEstado}
+                onClick={() => ejecutar(() => api.oficios.cambiarEstado(oficio.id, Number(nuevoEstado), motivoEstado)).then(() => { setNuevoEstado(''); setMotivoEstado('') })}
+              >
+                Aplicar
+              </button>
+            </div>
+          )}
 
-          <div className="action">
-            <h3>Comentar</h3>
-            <textarea rows={2} placeholder="Comentario…" value={comentario} onChange={(e) => setComentario(e.target.value)} />
-            <button
-              className="btn"
-              disabled={!comentario.trim()}
-              onClick={() => ejecutar(() => api.oficios.comentar(oficio.id, comentario.trim(), uid)).then(() => setComentario(''))}
-            >
-              Agregar comentario
-            </button>
-          </div>
+          {puedeAsignar && (
+            <div className="action">
+              <h3>Reasignar responsable</h3>
+              <select value={nuevoResponsable} onChange={(e) => setNuevoResponsable(e.target.value)}>
+                <option value="">Seleccione usuario…</option>
+                {usuarios.filter((u) => u.activo).map((u) => (
+                  <option key={u.id} value={u.id}>{u.nombre} ({u.departamentoNombre})</option>
+                ))}
+              </select>
+              <button
+                className="btn btn-primary"
+                disabled={!nuevoResponsable}
+                onClick={() => ejecutar(() => api.oficios.asignar(oficio.id, Number(nuevoResponsable), '')).then(() => setNuevoResponsable(''))}
+              >
+                Asignar
+              </button>
+            </div>
+          )}
 
-          <div className="action">
-            <h3>Adjuntar archivo</h3>
-            <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
-            <button
-              className="btn"
-              onClick={() => {
-                const archivo = fileRef.current?.files?.[0]
-                if (!archivo) return
-                ejecutar(() => api.oficios.subirAdjunto(oficio.id, archivo, uid)).then(() => {
-                  if (fileRef.current) fileRef.current.value = ''
-                })
-              }}
-            >
-              Subir adjunto
-            </button>
-          </div>
+          {puedeTramitar && (
+            <>
+              <div className="action">
+                <h3>Comentar</h3>
+                <textarea rows={2} placeholder="Comentario…" value={comentario} onChange={(e) => setComentario(e.target.value)} />
+                <button
+                  className="btn"
+                  disabled={!comentario.trim()}
+                  onClick={() => ejecutar(() => api.oficios.comentar(oficio.id, comentario.trim())).then(() => setComentario(''))}
+                >
+                  Agregar comentario
+                </button>
+              </div>
+
+              <div className="action">
+                <h3>Adjuntar archivo</h3>
+                <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+                <button
+                  className="btn"
+                  onClick={() => {
+                    const archivo = fileRef.current?.files?.[0]
+                    if (!archivo) return
+                    ejecutar(() => api.oficios.subirAdjunto(oficio.id, archivo)).then(() => {
+                      if (fileRef.current) fileRef.current.value = ''
+                    })
+                  }}
+                >
+                  Subir adjunto
+                </button>
+              </div>
+            </>
+          )}
         </section>
       </div>
 
@@ -199,7 +215,14 @@ export default function OficioDetallePage() {
                     <td>{(a.pesoBytes / 1024).toFixed(1)} KB</td>
                     <td>{a.subidoPorNombre}</td>
                     <td>{fmtFecha(a.subidoEn)}</td>
-                    <td><a className="btn btn-sm" href={api.oficios.urlAdjunto(oficio.id, a.id)}>Descargar</a></td>
+                    <td>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => api.oficios.descargarAdjunto(oficio.id, a.id, a.nombreArchivo).catch((e) => setError(e.message))}
+                      >
+                        Descargar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

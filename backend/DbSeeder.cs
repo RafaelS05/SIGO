@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SIGO.Api.Canales.Model;
 using SIGO.Api.Departamentos.Model;
@@ -11,13 +12,15 @@ namespace SIGO.Api
 {
     /// <summary>
     /// Carga inicial de catálogos y usuarios demo (documento SIGO, sección Configuración).
-    /// Idempotente: solo siembra si la tabla está vacía.
+    /// Idempotente: solo siembra si la tabla está vacía. Además asigna la contraseña inicial
+    /// (Auth:PasswordInicial) a todo usuario que aún no tenga credencial.
     /// </summary>
     public static class DbSeeder
     {
-        public static async Task SeedAsync(AppDbContext context)
+        public static async Task SeedAsync(AppDbContext context, IPasswordHasher<Usuario> hasher, IConfiguration configuration)
         {
             await context.Database.EnsureCreatedAsync();
+            await ActualizarEsquemaAsync(context);
 
             if (!await context.Estados.AnyAsync())
             {
@@ -119,6 +122,28 @@ namespace SIGO.Api
 
                 await context.SaveChangesAsync();
             }
+
+            // Credencial inicial para cuentas sin contraseña (usuarios demo o BD creada antes del módulo Auth).
+            var passwordInicial = configuration["Auth:PasswordInicial"];
+            if (!string.IsNullOrWhiteSpace(passwordInicial))
+            {
+                var sinCredencial = await context.Usuarios.Where(u => u.PasswordHash == null).ToListAsync();
+                foreach (var usuario in sinCredencial)
+                    usuario.PasswordHash = hasher.HashPassword(usuario, passwordInicial);
+
+                if (sinCredencial.Count > 0)
+                    await context.SaveChangesAsync();
+            }
+        }
+
+        // EnsureCreated no altera tablas existentes: se agregan las columnas del módulo Auth
+        // si la BD se creó con la versión anterior del modelo (idempotente).
+        private static async Task ActualizarEsquemaAsync(AppDbContext context)
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "IF COL_LENGTH('Usuarios', 'PasswordHash') IS NULL ALTER TABLE Usuarios ADD PasswordHash nvarchar(max) NULL;");
+            await context.Database.ExecuteSqlRawAsync(
+                "IF COL_LENGTH('Usuarios', 'UltimoAcceso') IS NULL ALTER TABLE Usuarios ADD UltimoAcceso datetime2 NULL;");
         }
     }
 }

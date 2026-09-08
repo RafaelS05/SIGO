@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { api } from '../api'
-import { useUser } from '../UserContext'
+import { useAuth } from '../auth/AuthContext'
+import { PERMISOS } from '../auth/permisos'
 import { EstadoBadge, PrioridadBadge, SlaBadge, fmtFechaCorta } from '../components/Badges'
+import { IconoMas } from '../components/Icons'
 import type { Estado, Oficio, OficioFiltros, Prioridad } from '../types'
 
 const TITULOS: Record<string, string> = {
@@ -16,8 +18,9 @@ type Rapido = '' | 'hoy' | '7dias' | 'mes'
 
 export default function BandejaPage() {
   const { tipo = 'mi' } = useParams()
-  const { usuarioActual } = useUser()
+  const { usuario: usuarioActual, puede } = useAuth()
   const [oficios, setOficios] = useState<Oficio[]>([])
+  const [error, setError] = useState('')
   const [estados, setEstados] = useState<Estado[]>([])
   const [prioridades, setPrioridades] = useState<Prioridad[]>([])
   const [cargando, setCargando] = useState(true)
@@ -48,17 +51,26 @@ export default function BandejaPage() {
       filtros.desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString()
     }
     setCargando(true)
-    api.oficios.list(filtros).then(setOficios).finally(() => setCargando(false))
+    setError('')
+    api.oficios.list(filtros)
+      .then(setOficios)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setCargando(false))
   }, [tipo, usuarioActual, estadoId, prioridadId, busqueda, rapido])
 
   useEffect(cargar, [cargar])
 
+  const verTodos = puede(PERMISOS.VerTodosLosOficios)
+
   const subtitulo = useMemo(() => {
     if (tipo === 'mi') return `Oficios asignados a ${usuarioActual?.nombre ?? '…'}`
     if (tipo === 'departamento') return `Destinados a ${usuarioActual?.departamentoNombre ?? '…'}`
-    if (tipo === 'atrasados') return 'Oficios con SLA vencido y sin cierre'
+    if (tipo === 'atrasados') return verTodos ? 'Oficios con SLA vencido y sin cierre' : `SLA vencido en ${usuarioActual?.departamentoNombre ?? 'su departamento'}`
     return 'Vista completa (Administrador / Auditor)'
-  }, [tipo, usuarioActual])
+  }, [tipo, usuarioActual, verTodos])
+
+  // La bandeja "Todos" es exclusiva de Administrador/Auditor (el backend también lo exige).
+  if (tipo === 'todos' && !verTodos) return <Navigate to="/acceso-denegado" replace />
 
   return (
     <div>
@@ -67,8 +79,10 @@ export default function BandejaPage() {
           <h1>{TITULOS[tipo] ?? 'Bandeja'}</h1>
           <p className="subtitle">{subtitulo}</p>
         </div>
-        <Link className="btn btn-primary" to="/nuevo">＋ Nuevo oficio</Link>
+        {puede(PERMISOS.CrearOficios) && <Link className="btn btn-primary" to="/nuevo"><IconoMas size={16} /> Nuevo oficio</Link>}
       </div>
+
+      {error && <div className="alert">{error}</div>}
 
       <div className="filters">
         <input

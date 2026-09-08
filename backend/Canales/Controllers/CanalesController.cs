@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SIGO.Api.Auth;
 using SIGO.Api.Canales.DTO;
 using SIGO.Api.Canales.Service;
 
@@ -26,7 +28,9 @@ namespace SIGO.Api.Canales.Controllers
             return result is null ? NotFound() : Ok(result);
         }
 
+        // Catálogos: lectura para todo usuario autenticado; escritura solo Administrador (RBAC).
         [HttpPost]
+        [Authorize(Policy = Permisos.AdministrarCatalogos)]
         public async Task<ActionResult<CanalResponseDto>> Create([FromBody] CanalCreateDto dto, CancellationToken cancellationToken)
         {
             var created = await _service.CreateAsync(dto, cancellationToken);
@@ -34,6 +38,7 @@ namespace SIGO.Api.Canales.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = Permisos.AdministrarCatalogos)]
         public async Task<ActionResult<CanalResponseDto>> Update(int id, [FromBody] CanalUpdateDto dto, CancellationToken cancellationToken)
         {
             var updated = await _service.UpdateAsync(id, dto, cancellationToken);
@@ -41,6 +46,7 @@ namespace SIGO.Api.Canales.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Permisos.AdministrarCatalogos)]
         public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
             => await _service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
     }

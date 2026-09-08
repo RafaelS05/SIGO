@@ -19,6 +19,11 @@ namespace SIGO.Api.Usuarios.DTO
 
         public bool OrigenAd { get; set; }
 
+        /// <summary>True si la cuenta puede iniciar sesión con contraseña local.</summary>
+        public bool TieneCredencial { get; set; }
+
+        public DateTime? UltimoAcceso { get; set; }
+
         public List<UsuarioRolResponseDto> Roles { get; set; } = new();
     }
 

@@ -35,6 +35,17 @@ namespace SIGO.Api.Usuarios.Repository
                 .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         }
 
+        public async Task<Usuario?> GetByCorreoAsync(string correo, CancellationToken cancellationToken = default)
+        {
+            var normalizado = correo.Trim().ToLowerInvariant();
+            return await _context.Set<Usuario>()
+                .AsNoTracking()
+                .Include(u => u.Departamento)
+                .Include(u => u.Roles)
+                    .ThenInclude(ur => ur.Rol)
+                .FirstOrDefaultAsync(u => u.Correo.ToLower() == normalizado, cancellationToken);
+        }
+
         public async Task AddAsync(Usuario usuario, CancellationToken cancellationToken = default)
         {
             await _context.Set<Usuario>().AddAsync(usuario, cancellationToken);

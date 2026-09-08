@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { useUser } from '../UserContext'
+import { useAuth } from '../auth/AuthContext'
 import type { Canal, Departamento, Prioridad, TipoOficio } from '../types'
 
 export default function NuevoOficioPage() {
   const navigate = useNavigate()
-  const { usuarioActual } = useUser()
+  const { usuario: usuarioActual } = useAuth()
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
   const [tipos, setTipos] = useState<TipoOficio[]>([])
   const [prioridades, setPrioridades] = useState<Prioridad[]>([])
@@ -58,7 +58,7 @@ export default function NuevoOficioPage() {
         idPrioridad: Number(form.idPrioridad),
         idCanal: Number(form.idCanal),
         fechaIngreso: form.fechaIngreso,
-        creadoPor: usuarioActual.id,
+        // creadoPor lo determina el backend a partir del token.
       })
       navigate(`/oficio/${creado.id}`)
     } catch (err) {

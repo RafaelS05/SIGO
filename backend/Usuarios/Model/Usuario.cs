@@ -22,6 +22,11 @@ namespace SIGO.Api.Usuarios.Model
 
         public bool OrigenAd { get; set; }
 
+        /// <summary>Hash PBKDF2 (ASP.NET Identity PasswordHasher). Null = cuenta sin credencial local.</summary>
+        public string? PasswordHash { get; set; }
+
+        public DateTime? UltimoAcceso { get; set; }
+
         public Departamento? Departamento { get; set; }
 
         public List<UsuarioRol> Roles { get; set; } = new();

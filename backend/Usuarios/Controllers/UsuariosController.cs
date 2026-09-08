@@ -1,9 +1,15 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIGO.Api.Auth;
 using SIGO.Api.Usuarios.DTO;
 using SIGO.Api.Usuarios.Service;
 
 namespace SIGO.Api.Usuarios.Controllers
 {
+    /// <summary>
+    /// Lectura: cualquier usuario autenticado (se necesita para asignar responsables).
+    /// Escritura: solo Administrador. El alta con credenciales vive en POST api/Auth/registro.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class UsuariosController : ControllerBase
@@ -27,6 +33,7 @@ namespace SIGO.Api.Usuarios.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = Permisos.AdministrarUsuarios)]
         public async Task<ActionResult<UsuarioResponseDto>> Create([FromBody] UsuarioCreateDto dto, CancellationToken cancellationToken)
         {
             var created = await _service.CreateAsync(dto, cancellationToken);
@@ -34,6 +41,7 @@ namespace SIGO.Api.Usuarios.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = Permisos.AdministrarUsuarios)]
         public async Task<ActionResult<UsuarioResponseDto>> Update(int id, [FromBody] UsuarioUpdateDto dto, CancellationToken cancellationToken)
         {
             var updated = await _service.UpdateAsync(id, dto, cancellationToken);
@@ -41,7 +49,12 @@ namespace SIGO.Api.Usuarios.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Permisos.AdministrarUsuarios)]
         public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
-            => await _service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
+        {
+            if (id == User.GetUsuarioId())
+                return BadRequest(new { title = "No puede eliminar su propia cuenta." });
+            return await _service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
+        }
     }
 }

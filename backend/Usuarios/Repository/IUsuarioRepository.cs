@@ -14,6 +14,9 @@ namespace SIGO.Api.Usuarios.Repository
 
         Task<Usuario?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
+        // Login: búsqueda por correo (índice único, comparación sin distinguir mayúsculas).
+        Task<Usuario?> GetByCorreoAsync(string correo, CancellationToken cancellationToken = default);
+
         // Stages an insert on the tracked context. Service commits.
         Task AddAsync(Usuario usuario, CancellationToken cancellationToken = default);
 

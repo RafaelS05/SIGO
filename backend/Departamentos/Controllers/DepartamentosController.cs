@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SIGO.Api.Auth;
 using SIGO.Api.Departamentos.DTO;
 using SIGO.Api.Departamentos.Service;
 
@@ -26,7 +28,9 @@ namespace SIGO.Api.Departamentos.Controllers
             return result is null ? NotFound() : Ok(result);
         }
 
+        // Catálogos: lectura para todo usuario autenticado; escritura solo Administrador (RBAC).
         [HttpPost]
+        [Authorize(Policy = Permisos.AdministrarCatalogos)]
         public async Task<ActionResult<DepartamentoResponseDto>> Create([FromBody] DepartamentoCreateDto dto, CancellationToken cancellationToken)
         {
             var created = await _service.CreateAsync(dto, cancellationToken);
@@ -34,6 +38,7 @@ namespace SIGO.Api.Departamentos.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = Permisos.AdministrarCatalogos)]
         public async Task<ActionResult<DepartamentoResponseDto>> Update(int id, [FromBody] DepartamentoUpdateDto dto, CancellationToken cancellationToken)
         {
             var updated = await _service.UpdateAsync(id, dto, cancellationToken);
@@ -41,6 +46,7 @@ namespace SIGO.Api.Departamentos.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Permisos.AdministrarCatalogos)]
         public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
             => await _service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
     }

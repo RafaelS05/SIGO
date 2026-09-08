@@ -72,12 +72,45 @@ npm install
 npm run dev         # http://localhost:5173 (proxy /api → 5099)
 ```
 
-Usuarios demo (uno por rol) se eligen en el selector de la barra superior:
-Administrador, Mesa de entrada, Jefatura, Analista y Auditor.
+## Autenticación y RBAC
+
+- **Login** público en `/login` (correo + contraseña). El API emite un JWT (`POST api/Auth/login`)
+  con los roles como claims; el frontend lo guarda en `localStorage` y lo envía en `Authorization: Bearer`.
+- **Registro de usuarios** en `/admin/registro-usuario`: URL restringida al rol Administrador
+  (`POST api/Auth/registro`). Ahí se asignan datos, credenciales y roles.
+- Contraseñas con `PasswordHasher` (PBKDF2). El usuario cambia la suya en `/perfil`;
+  el Administrador puede restablecerla desde Configuración → Usuarios.
+- **Matriz RBAC** en `backend/Auth/Permisos.cs` (policies) y replicada en
+  `frontend/src/auth/permisos.ts` (navegación y acciones visibles). Todo endpoint exige token
+  salvo el login; el autor de cada acción sobre oficios se toma del token, nunca del cuerpo.
+
+| Permiso | Administrador | Mesa de entrada | Jefatura | Analista | Auditor |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Administrar usuarios / catálogos | ✔ | | | | |
+| Ver todos los oficios (sin filtro de depto.) | ✔ | | | | ✔ |
+| Crear / editar oficios | ✔ | ✔ | ✔ | | |
+| Asignar responsables | ✔ | | ✔ | | |
+| Tramitar (estado, comentarios, adjuntos) | ✔ | ✔ | ✔ | ✔ | |
+| Eliminar oficios | ✔ | | | | |
+| Reportes | ✔ | | ✔ | | ✔ |
+
+Quien no tiene "Ver todos" queda acotado a los oficios de su departamento o donde figura como responsable.
+
+Usuarios demo (contraseña inicial `Sigo2025!`, configurable en `Auth:PasswordInicial`):
+
+| Rol | Correo |
+|---|---|
+| Administrador | rafaelsolanosilv@gmail.com |
+| Mesa de entrada | maria.jimenez@demo.local |
+| Jefatura | carlos.rodriguez@demo.local |
+| Analista | ana.vargas@demo.local |
+| Auditor | luis.mora@demo.local |
+
+Cambiar `Jwt:Key` en `appsettings.json` antes de desplegar (mínimo 32 caracteres).
 
 ## Pendientes para producción (según anteproyecto)
 
-- Autenticación corporativa Azure AD (OpenID Connect / MSAL) en lugar del selector demo.
+- Autenticación corporativa Azure AD (OpenID Connect / MSAL) como proveedor adicional al login local.
 - Migraciones EF (`dotnet ef migrations add Inicial`) en lugar de `EnsureCreated`.
 - Notificaciones por correo/Teams (48/24/8 h antes del vencimiento) — SMTP o Power Automate.
 - Reportería Power BI sobre el esquema estrella propuesto.
