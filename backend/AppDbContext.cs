@@ -10,10 +10,6 @@ using SIGO.Api.Usuarios.Model;
 
 namespace SIGO.Api
 {
-    /// <summary>
-    /// EF Core unit of work compartido por todos los slices. Los repositorios lo usan para
-    /// consultar y preparar cambios; los servicios llaman SaveChangesAsync (UWC).
-    /// </summary>
     public class AppDbContext : DbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)

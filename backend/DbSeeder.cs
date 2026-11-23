@@ -91,7 +91,7 @@ namespace SIGO.Api
                 context.Usuarios.AddRange(
                     new Usuario
                     {
-                        Nombre = "Rafael Solano", Correo = "rafaelsolanosilv@gmail.com",
+                        Nombre = "Rafael Solano", Correo = "rafaeldemo@gmail.com",
                         IdDepartamento = deptoPorSigla["TI"], Cargo = "Administrador del sistema", OrigenAd = false,
                         Roles = { new UsuarioRol { IdRol = rolPorNombre["Administrador"] } },
                     },
